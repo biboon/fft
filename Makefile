@@ -1,4 +1,4 @@
-CC       := gcc
+CC       := clang
 DIRBIN   := bin
 DIRBUILD := build
 
@@ -16,12 +16,12 @@ CFLAGS   += -Iinclude
 LDFLAGS  +=
 LIB      += -lm
 
-CFLAGS   += -O2
+CFLAGS   += -O2 -march=native
 
 
-.PHONY: logger
+.PHONY: bench
 
-logger: $(COBJS)
+bench: $(COBJS)
 	@mkdir -p $(DIRBIN)
 	$(CC) $(LDFLAGS) -o $(DIRBIN)/$@ $^ $(LIB)
 

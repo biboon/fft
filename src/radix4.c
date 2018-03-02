@@ -3,46 +3,41 @@
 #include <string.h>
 
 
-static void butterfly(complex *output, complex *twids, int n, int local_size, int samples);
+static void butterfly(complex *output, complex *twids, int sub_size, int bf, int size);
 
 
-void radix4_DIF(complex *input, complex *output, complex *twids, int samples)
+void radix4_DIF(complex *input, complex *output, complex *twids, int size)
 {
-    memcpy(output, input, samples * sizeof(complex));
+	memcpy(output, input, size * sizeof(complex));
 
-    for (int local_size = samples; local_size > 1; local_size /= 4)
-        for (int n = 0; n < samples / 4; n++)
-            butterfly(output, twids, n, local_size, samples);
+	for (int sub_size = size; sub_size > 1; sub_size /= 4)
+		for (int sub_dft = 0; sub_dft < size / sub_size; ++sub_dft)
+			for (int bf = 0; bf < sub_size / 4; ++bf)
+				butterfly(&output[sub_dft * sub_size], twids, sub_size, bf, size);
 }
 
 
 /* Radix 4 algorithm */
-void butterfly(complex *output, complex *twids, int n, int local_size, int samples)
+void butterfly(complex *output, complex *twids, int sub_size, int bf, int size)
 {
-    int twidindex, q, r, _n;
-    complex stage[2][4];
+	complex stage[2][4];
+	int twidindex = bf * size / sub_size;
 
-    // Do the Euclidian division of n
-    q = n / (local_size / 4);
-    r = n % (local_size / 4);
-    _n = q * local_size + r;
-    twidindex = r * samples / local_size;
+	/* Init values */
+	stage[0][0] = output[bf + 0 * sub_size / 4];
+	stage[0][1] = output[bf + 1 * sub_size / 4];
+	stage[0][2] = output[bf + 2 * sub_size / 4];
+	stage[0][3] = output[bf + 3 * sub_size / 4];
 
-    /* Init values */
-    stage[0][0] = output[_n + 0 * local_size / 4];
-    stage[0][1] = output[_n + 1 * local_size / 4];
-    stage[0][2] = output[_n + 2 * local_size / 4];
-    stage[0][3] = output[_n + 3 * local_size / 4];
+	/* Process first stage of butterfly */
+	stage[1][0] = stage[0][0] +     stage[0][1] +     stage[0][2] +     stage[0][3];
+	stage[1][1] = stage[0][0] - I * stage[0][1] -     stage[0][2] + I * stage[0][3];
+	stage[1][2] = stage[0][0] -     stage[0][1] +     stage[0][2] -     stage[0][3];
+	stage[1][3] = stage[0][0] + I * stage[0][1] -     stage[0][2] - I * stage[0][3];
 
-    /* Process first stage of butterfly */
-    stage[1][0] = stage[0][0] +     stage[0][1] +     stage[0][2] +     stage[0][3];
-    stage[1][1] = stage[0][0] - I * stage[0][1] -     stage[0][2] + I * stage[0][3];
-    stage[1][2] = stage[0][0] -     stage[0][1] +     stage[0][2] -     stage[0][3];
-    stage[1][3] = stage[0][0] + I * stage[0][1] -     stage[0][2] - I * stage[0][3];
-
-    /* Multiply with twiddle factors */
-    output[_n + 0 * local_size / 4] = stage[1][0];
-    output[_n + 1 * local_size / 4] = stage[1][1] * twids[1 * twidindex];
-    output[_n + 2 * local_size / 4] = stage[1][2] * twids[2 * twidindex];
-    output[_n + 3 * local_size / 4] = stage[1][3] * twids[3 * twidindex];
+	/* Multiply with twiddle factors */
+	output[bf + 0 * sub_size / 4] = stage[1][0];
+	output[bf + 1 * sub_size / 4] = stage[1][1] * twids[1 * twidindex];
+	output[bf + 2 * sub_size / 4] = stage[1][2] * twids[2 * twidindex];
+	output[bf + 3 * sub_size / 4] = stage[1][3] * twids[3 * twidindex];
 }
